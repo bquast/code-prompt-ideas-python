@@ -28,7 +28,7 @@ export async function onRequestPost({ request, env }) {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { promptId, promptText, category, winner, codeA, codeB } = body;
+  const { promptId, promptText, category, winner, modelA, modelB, codeA, codeB } = body;
 
   if (!promptId || !winner) {
     return Response.json({ error: 'Missing fields' }, { status: 400 });
@@ -36,21 +36,23 @@ export async function onRequestPost({ request, env }) {
 
   try {
     await env.DB.prepare(
-      `INSERT INTO votes (prompt_id, prompt, category, winner, code_a, code_b)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO votes (prompt_id, prompt, category, winner, model_a, model_b, code_a, code_b)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       promptId,
       promptText || '',
       category   || '',
       winner,
+      modelA     || '',
+      modelB     || '',
       codeA      || '',
       codeB      || ''
     ).run();
 
+    console.log('[vote] inserted ok, promptId=', promptId, 'winner=', winner);
     return Response.json({ ok: true, stored: true });
   } catch (e) {
-    // Log but don't surface DB errors to client
-    console.error('D1 insert failed:', e.message);
-    return Response.json({ ok: true, stored: false });
+    console.error('[vote] D1 insert failed:', e.message, e.cause ?? '');
+    return Response.json({ ok: true, stored: false, error: e.message });
   }
 }

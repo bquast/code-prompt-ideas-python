@@ -30,21 +30,36 @@ export async function onRequestPost({ request, env }) {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { side, prompt } = body;
-  if (!side || !prompt) {
-    return Response.json({ error: 'Missing side or prompt' }, { status: 400 });
+  const { side, model: modelFromBody, prompt } = body;
+  if (!prompt) {
+    return Response.json({ error: 'Missing prompt' }, { status: 400 });
   }
 
-  const prefix = side === 'A' ? 'model_A' : 'model_B';
-  const url    = env[`${prefix}_url`];
-  const apiKey = env[`${prefix}_api_key`];
-  const model  = env[`${prefix}_name`];
+  // model can be passed directly, or derived from side + env vars (backwards compat)
+  let model = modelFromBody;
+  let url, apiKey;
 
-  console.log(`[generate] side=${side} model=${model} url=${url} hasKey=${!!apiKey}`);
+  if (model) {
+    // New path: model name passed directly, look up matching env vars
+    const prefix = findPrefix(env, model);
+    if (!prefix) {
+      return Response.json({ error: `No config found for model: ${model}` }, { status: 503 });
+    }
+    url    = env[`${prefix}_url`];
+    apiKey = env[`${prefix}_api_key`];
+  } else {
+    // Legacy path: side-based lookup
+    const prefix = side === 'A' ? 'model_A' : 'model_B';
+    url    = env[`${prefix}_url`];
+    apiKey = env[`${prefix}_api_key`];
+    model  = env[`${prefix}_name`];
+  }
+
+  console.log(`[generate] model=${model} url=${url} hasKey=${!!apiKey}`);
 
   if (!url || !apiKey || !model) {
     console.log(`[generate] missing config: url=${!!url} apiKey=${!!apiKey} model=${!!model}`);
-    return Response.json({ error: `Model ${side} not fully configured (need name, url, api_key)` }, { status: 503 });
+    return Response.json({ error: `Model not fully configured` }, { status: 503 });
   }
 
   try {
@@ -92,7 +107,14 @@ async function callModel(url, apiKey, model, userPrompt) {
   throw new Error('Unrecognised response shape from model API');
 }
 
-// ── Strip accidental markdown fences ─────────────────────────────────────────
+// ── Find env prefix matching a model name ─────────────────────────────────────
+
+function findPrefix(env, modelName) {
+  for (const prefix of ['model_A', 'model_B', 'model_C', 'model_D']) {
+    if (env[`${prefix}_name`] === modelName) return prefix;
+  }
+  return null;
+}
 
 function stripFences(code) {
   return code

@@ -1,15 +1,13 @@
 // PyArena — app.js
-// Fetches Python code from two models via /api/generate,
-// runs both in Pyodide, lets user vote, posts result to /api/vote.
 
 let pyodide = null;
 let currentPrompt = null;
 let promptQueue = [];
 let sessionVotes = { A: 0, B: 0, skip: 0 };
 let codeA = '', codeB = '';
+let modelA = '', modelB = '';   // actual model ids for current battle
 let bothReady = false;
-
-// ── DOM refs ──────────────────────────────────────────────────────────────────
+let allModels = [];             // fetched once from /api/config
 
 const $ = id => document.getElementById(id);
 
@@ -25,6 +23,12 @@ window.addEventListener('load', async () => {
     $('loading-msg').textContent = 'Failed to load Pyodide — try refreshing.';
     return;
   }
+
+  // Fetch model list once
+  try {
+    const cfg = await fetchJSON('/api/config');
+    allModels = cfg.models || [];
+  } catch (_) {}
 
   promptQueue = shuffle([...window.PROMPTS]);
   $('loading-screen').style.display = 'none';
@@ -45,7 +49,12 @@ async function loadNextBattle() {
   codeB = '';
   bothReady = false;
 
-  // Reset UI
+  // Pick 2 random models from the pool, randomly assign left/right
+  const pair = pickPair(allModels);
+  modelA = pair[0];
+  modelB = pair[1];
+
+  // Reset UI — hide model names until after vote
   $('card-a').className = 'code-card';
   $('card-b').className = 'code-card';
   $('code-a').innerHTML = '<span class="placeholder">generating…</span>';
@@ -58,6 +67,10 @@ async function loadNextBattle() {
   $('status-a').className = 'card-status';
   $('status-b').textContent = 'generating…';
   $('status-b').className = 'card-status';
+  $('model-a-name').textContent = modelA;
+  $('model-b-name').textContent = modelB;
+  $('model-a-name').classList.add('hidden');
+  $('model-b-name').classList.add('hidden');
   $('vote-a').disabled = true;
   $('vote-b').disabled = true;
   $('vote-skip').disabled = true;
@@ -68,33 +81,21 @@ async function loadNextBattle() {
   $('prompt-num').textContent = `${window.PROMPTS.length - promptQueue.length} / ${window.PROMPTS.length}`;
   $('prompt-text').textContent = currentPrompt.text;
 
-  // Fetch model names from config endpoint
-  try {
-    const cfg = await fetchJSON('/api/config');
-    $('model-a-name').textContent = cfg.modelAName || 'Model A';
-    $('model-b-name').textContent = cfg.modelBName || 'Model B';
-  } catch (_) {
-    $('model-a-name').textContent = 'Model A';
-    $('model-b-name').textContent = 'Model B';
-  }
-
-  // Fire both requests in parallel
   Promise.all([
-    generateAndRun('A'),
-    generateAndRun('B'),
+    generateAndRun('A', modelA),
+    generateAndRun('B', modelB),
   ]);
 }
 
-async function generateAndRun(side) {
-  const statusEl = $(('status-' + side).toLowerCase());
-  const codeEl = $(('code-' + side).toLowerCase());
-  const outputEl = $(('output-' + side).toLowerCase());
+async function generateAndRun(side, model) {
+  const statusEl = $('status-' + side.toLowerCase());
+  const codeEl   = $('code-'   + side.toLowerCase());
+  const outputEl = $('output-' + side.toLowerCase());
 
   try {
-    // 1. Generate code from model
     const res = await fetchJSON('/api/generate', {
       method: 'POST',
-      body: JSON.stringify({ side, prompt: currentPrompt.text, promptId: currentPrompt.id }),
+      body: JSON.stringify({ model, prompt: currentPrompt.text, promptId: currentPrompt.id }),
     });
 
     const code = res.code || '';
@@ -104,11 +105,9 @@ async function generateAndRun(side) {
     statusEl.textContent = 'running…';
     statusEl.className = 'card-status running';
 
-    // 2. Run in Pyodide
     let stdout = '';
-    let stderr = '';
     pyodide.setStdout({ batched: s => { stdout += s + '\n'; } });
-    pyodide.setStderr({ batched: s => { stderr += s + '\n'; } });
+    pyodide.setStderr({ batched: () => {} });
 
     const STDIN_STUB = 'import sys, io\nsys.stdin = io.StringIO("")\n';
     try {
@@ -133,7 +132,6 @@ async function generateAndRun(side) {
     statusEl.className = 'card-status error';
   }
 
-  // Enable voting once both sides are done
   checkBothReady();
 }
 
@@ -167,14 +165,13 @@ window.vote = async function(choice) {
     sessionVotes.skip++;
   }
 
-  // Reveal model names now that vote is cast
+  // Reveal model names after vote
   $('model-a-name').classList.remove('hidden');
   $('model-b-name').classList.remove('hidden');
-  $('model-a-label') && ($('model-a-label').style.display = 'none');
-  $('model-b-label') && ($('model-b-label').style.display = 'none');
 
-  const tally = `A ${sessionVotes.A}  ·  B ${sessionVotes.B}  ·  skipped ${sessionVotes.skip}`;
-  $('vote-result').textContent = choice === 'skip' ? `skipped  ·  ${tally}` : `voted ${choice}  ·  ${tally}`;
+  const winnerModel = choice === 'A' ? modelA : choice === 'B' ? modelB : 'skip';
+  const tally = `${modelA} ${sessionVotes.A}  ·  ${modelB} ${sessionVotes.B}  ·  skipped ${sessionVotes.skip}`;
+  $('vote-result').textContent = choice === 'skip' ? `skipped  ·  ${tally}` : `${winnerModel} won  ·  ${tally}`;
   $('vote-area').style.display = 'none';
   $('next-area').style.display = 'flex';
 
@@ -187,11 +184,13 @@ window.vote = async function(choice) {
         promptText: currentPrompt.text,
         category: currentPrompt.category,
         winner: choice,
+        modelA,
+        modelB,
         codeA,
         codeB,
       }),
     });
-    if (!res.stored) console.warn('[vote] D1 not stored — check DB binding in Pages dashboard');
+    if (!res.stored) console.warn('[vote] D1 not stored:', res.error || 'check DB binding');
   } catch (e) { console.warn('[vote] failed:', e.message); }
 };
 
@@ -202,9 +201,9 @@ window.nextBattle = loadNextBattle;
 function showSessionEnd() {
   $('arena').innerHTML = `
     <div class="session-end">
-      <h2>session complete</h2>
-      <p>A won ${sessionVotes.A} &nbsp;·&nbsp; B won ${sessionVotes.B} &nbsp;·&nbsp; ${sessionVotes.skip} skipped</p>
-      <button class="next-btn" onclick="location.reload()">play again</button>
+      <h2>Session complete</h2>
+      <p>${sessionVotes.A + sessionVotes.B} votes cast · ${sessionVotes.skip} skipped</p>
+      <button class="next-btn" onclick="location.reload()">Play again</button>
     </div>`;
 }
 
@@ -223,4 +222,11 @@ function shuffle(arr) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+// Pick 2 distinct models at random, shuffle their left/right position
+function pickPair(models) {
+  if (!models || models.length < 2) return ['Model A', 'Model B'];
+  const copy = shuffle([...models]);
+  return [copy[0], copy[1]];
 }
