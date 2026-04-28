@@ -1,3 +1,5 @@
+Live: <https://code-prompt-ideas-python.pages.dev/>
+
 # PyArena
 
 Head-to-head Python code battles. Two models get the same prompt, generate Python, it runs in-browser via Pyodide, user votes.
