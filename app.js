@@ -110,8 +110,9 @@ async function generateAndRun(side) {
     pyodide.setStdout({ batched: s => { stdout += s + '\n'; } });
     pyodide.setStderr({ batched: s => { stderr += s + '\n'; } });
 
+    const STDIN_STUB = 'import sys, io\nsys.stdin = io.StringIO("")\n';
     try {
-      await pyodide.runPythonAsync(code);
+      await pyodide.runPythonAsync(STDIN_STUB + code);
       outputEl.textContent = stdout.trim() || '(no output)';
       outputEl.className = 'output-text';
       statusEl.textContent = 'done';
@@ -166,14 +167,20 @@ window.vote = async function(choice) {
     sessionVotes.skip++;
   }
 
+  // Reveal model names now that vote is cast
+  $('model-a-name').classList.remove('hidden');
+  $('model-b-name').classList.remove('hidden');
+  $('model-a-label') && ($('model-a-label').style.display = 'none');
+  $('model-b-label') && ($('model-b-label').style.display = 'none');
+
   const tally = `A ${sessionVotes.A}  ·  B ${sessionVotes.B}  ·  skipped ${sessionVotes.skip}`;
   $('vote-result').textContent = choice === 'skip' ? `skipped  ·  ${tally}` : `voted ${choice}  ·  ${tally}`;
   $('vote-area').style.display = 'none';
   $('next-area').style.display = 'flex';
 
-  // Post to D1 (fire-and-forget)
+  // Post to D1
   try {
-    await fetchJSON('/api/vote', {
+    const res = await fetchJSON('/api/vote', {
       method: 'POST',
       body: JSON.stringify({
         promptId: currentPrompt.id,
@@ -184,7 +191,8 @@ window.vote = async function(choice) {
         codeB,
       }),
     });
-  } catch (_) { /* non-fatal */ }
+    if (!res.stored) console.warn('[vote] D1 not stored — check DB binding in Pages dashboard');
+  } catch (e) { console.warn('[vote] failed:', e.message); }
 };
 
 window.nextBattle = loadNextBattle;

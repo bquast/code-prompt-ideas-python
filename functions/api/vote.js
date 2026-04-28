@@ -17,7 +17,7 @@
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB) {
-    // D1 not bound — silently accept so the UI doesn't break
+    console.warn('[vote] DB binding not found — set D1 binding named DB in Pages dashboard');
     return Response.json({ ok: true, stored: false });
   }
 

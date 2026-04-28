@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PyArena — Python Code Battle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@600,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-
-  <header>
-    <span class="logo">PyArena</span>
-    <span class="tagline">which python is better?</span>
-  </header>
 
   <main>
 
     <div id="loading-screen" class="loading-screen">
       <div class="loading-inner">
+        <div class="logo-mark">PyArena</div>
         <div class="spinner"></div>
         <div id="loading-msg">Loading Python runtime…</div>
         <div class="loading-sub">Pyodide ~10MB · cached after first visit</div>
@@ -31,12 +31,14 @@
           <span class="prompt-num" id="prompt-num"></span>
         </div>
         <div class="prompt-text" id="prompt-text"></div>
+        <div class="prompt-logo">PyArena</div>
       </div>
 
       <div class="battle-grid">
         <div class="code-card" id="card-a">
           <div class="card-header">
-            <span class="model-name" id="model-a-name">Model A</span>
+            <span class="model-label">Model A</span>
+            <span class="model-name hidden" id="model-a-name"></span>
             <span class="card-status" id="status-a">generating…</span>
           </div>
           <pre class="code-block" id="code-a"><span class="placeholder">…</span></pre>
@@ -48,7 +50,8 @@
 
         <div class="code-card" id="card-b">
           <div class="card-header">
-            <span class="model-name" id="model-b-name">Model B</span>
+            <span class="model-label">Model B</span>
+            <span class="model-name hidden" id="model-b-name"></span>
             <span class="card-status" id="status-b">generating…</span>
           </div>
           <pre class="code-block" id="code-b"><span class="placeholder">…</span></pre>
