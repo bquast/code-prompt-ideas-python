@@ -19,6 +19,7 @@ The user gives you a task. You reply with ONLY a short, self-contained Python sc
 - Prints its output to stdout
 - Is at most 25 lines
 - Has no markdown, no code fences, no explanation — just raw Python code
+- Never uses input() — hardcode any example data directly in the script
 Do not include \`\`\`python or \`\`\` delimiters. Output only the Python source.`;
 
 export async function onRequestPost({ request, env }) {
@@ -39,7 +40,10 @@ export async function onRequestPost({ request, env }) {
   const apiKey = env[`${prefix}_api_key`];
   const model  = env[`${prefix}_name`];
 
+  console.log(`[generate] side=${side} model=${model} url=${url} hasKey=${!!apiKey}`);
+
   if (!url || !apiKey || !model) {
+    console.log(`[generate] missing config: url=${!!url} apiKey=${!!apiKey} model=${!!model}`);
     return Response.json({ error: `Model ${side} not fully configured (need name, url, api_key)` }, { status: 503 });
   }
 
@@ -47,6 +51,7 @@ export async function onRequestPost({ request, env }) {
     const code = await callModel(url, apiKey, model, prompt);
     return Response.json({ code: stripFences(code) });
   } catch (e) {
+    console.log(`[generate] callModel error: ${e.message}`);
     return Response.json({ error: e.message }, { status: 502 });
   }
 }
