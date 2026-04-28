@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PyArena — Python Code Battle</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <header>
+    <span class="logo">PyArena</span>
+    <span class="tagline">which python is better?</span>
+  </header>
+
+  <main>
+
+    <div id="loading-screen" class="loading-screen">
+      <div class="loading-inner">
+        <div class="spinner"></div>
+        <div id="loading-msg">Loading Python runtime…</div>
+        <div class="loading-sub">Pyodide ~10MB · cached after first visit</div>
+      </div>
+    </div>
+
+    <div id="arena" style="display:none">
+
+      <div class="prompt-box">
+        <div class="prompt-meta">
+          <span class="prompt-category" id="prompt-category"></span>
+          <span class="prompt-num" id="prompt-num"></span>
+        </div>
+        <div class="prompt-text" id="prompt-text"></div>
+      </div>
+
+      <div class="battle-grid">
+        <div class="code-card" id="card-a">
+          <div class="card-header">
+            <span class="model-name" id="model-a-name">Model A</span>
+            <span class="card-status" id="status-a">generating…</span>
+          </div>
+          <pre class="code-block" id="code-a"><span class="placeholder">…</span></pre>
+          <div class="output-box">
+            <div class="output-label">output</div>
+            <pre class="output-text" id="output-a"></pre>
+          </div>
+        </div>
+
+        <div class="code-card" id="card-b">
+          <div class="card-header">
+            <span class="model-name" id="model-b-name">Model B</span>
+            <span class="card-status" id="status-b">generating…</span>
+          </div>
+          <pre class="code-block" id="code-b"><span class="placeholder">…</span></pre>
+          <div class="output-box">
+            <div class="output-label">output</div>
+            <pre class="output-text" id="output-b"></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="vote-area" id="vote-area">
+        <button class="vote-btn" id="vote-a" onclick="vote('A')" disabled>Vote A</button>
+        <button class="vote-btn skip-btn" id="vote-skip" onclick="vote('skip')" disabled>Skip</button>
+        <button class="vote-btn" id="vote-b" onclick="vote('B')" disabled>Vote B</button>
+      </div>
+
+      <div class="next-area" id="next-area" style="display:none">
+        <div class="vote-result" id="vote-result"></div>
+        <button class="next-btn" onclick="nextBattle()">Next battle →</button>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script src="./prompts.js" defer></script>
+  <script src="./app.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
+</body>
+</html>
