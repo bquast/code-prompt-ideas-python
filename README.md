@@ -1,4 +1,5 @@
-Live: <https://code-prompt-ideas-python.pages.dev/>
+Live: <https://py-arena.com>
+Backup: <https://code-prompt-ideas-python.pages.dev/>
 
 # PyArena
 
