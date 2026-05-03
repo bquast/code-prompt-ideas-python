@@ -1,5 +1,7 @@
 // PyArena — app.js
 
+// TODO: remove prompt title and #
+
 let pyodide = null;
 let currentPrompt = null;
 let promptQueue = [];
